@@ -16,7 +16,20 @@ namespace BatchImageConverter
             // Initialize the state based on default selected format.
             string defaultFormat = (ConvertTo.SelectedItem as ComboBoxItem).Content as string;
             CompressionSlider.IsEnabled = (defaultFormat == "JPG");
+
+
         }
+
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close(); // Closes the application
+        }
+
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.MessageBox.Show("Batch Image Converter\nPeterson's Software\n08/2023");
+        }
+
         private void ChooseSourceFolder(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
@@ -102,52 +115,51 @@ namespace BatchImageConverter
                             fileInfo.Extension.ToLower() == ".bmp" || fileInfo.Extension.ToLower() == ".gif" ||
                             fileInfo.Extension.ToLower() == ".tiff" || fileInfo.Extension.ToLower() == ".tif")
                         {
+                            // Image conversion code
+                            BitmapImage image = new BitmapImage();
+                            image.BeginInit();
+                            image.UriSource = new Uri(file);
+                            image.EndInit();
 
+                            BitmapEncoder encoder;
 
+                            if (format == "JPG")
+                            {
+                                encoder = new JpegBitmapEncoder();
+                                ((JpegBitmapEncoder)encoder).QualityLevel = compression;
+                            }
+                            else
+                            {
+                                encoder = new PngBitmapEncoder();
+                            }
 
-                        // Image conversion code
-                        BitmapImage image = new BitmapImage();
-                        image.BeginInit();
-                        image.UriSource = new Uri(file);
-                        image.EndInit();
+                            encoder.Frames.Add(BitmapFrame.Create(image));
 
-                        BitmapEncoder encoder;
+                            TransformedBitmap resizedImage = new TransformedBitmap(
+                                image,
+                                new System.Windows.Media.ScaleTransform(width / image.PixelWidth, height / image.PixelHeight)
+                            );
+                            encoder.Frames.Clear();
+                            encoder.Frames.Add(BitmapFrame.Create(resizedImage));
 
-                        if (format == "JPG")
-                        {
-                            encoder = new JpegBitmapEncoder();
-                            ((JpegBitmapEncoder)encoder).QualityLevel = compression;
-                        }
-                        else
-                        {
-                            encoder = new PngBitmapEncoder();
-                        }
+                            string destinationFile = Path.Combine(
+                                destinationFolder,
+                                $"{fileInfo.Name}_{width}x{height}.{format.ToLower()}"
+                            );
 
-                        encoder.Frames.Add(BitmapFrame.Create(image));
+                            using (var stream = new FileStream(destinationFile, FileMode.Create))
+                            {
+                                encoder.Save(stream);
+                            }
 
-                        TransformedBitmap resizedImage = new TransformedBitmap(
-                            image,
-                            new System.Windows.Media.ScaleTransform(width / image.PixelWidth, height / image.PixelHeight)
-                        );
-                        encoder.Frames.Clear();
-                        encoder.Frames.Add(BitmapFrame.Create(resizedImage));
-
-                        string destinationFile = Path.Combine(
-                            destinationFolder,
-                            $"{fileInfo.Name}_{width}x{height}.{format.ToLower()}"
-                        );
-
-                        using (var stream = new FileStream(destinationFile, FileMode.Create))
-                        {
-                            encoder.Save(stream);
-                        }
                             // Update the ProgressBar after each file is processed
                             ConversionProgressBar.Value++;
+                            double percent = (ConversionProgressBar.Value / ConversionProgressBar.Maximum) * 100;
+                            ProgressText.Text = $"{percent}%";
                         }
+                    }
                 }
             }
-        }
-
             catch (DirectoryNotFoundException ex)
             {
                 System.Windows.MessageBox.Show("Directory not found: " + ex.Message);
@@ -162,6 +174,7 @@ namespace BatchImageConverter
                 System.Windows.MessageBox.Show("An error occurred: " + ex.Message);
             }
         }
+
 
     }
 }
