@@ -1,10 +1,12 @@
 **Batch Image Converter**
 =======================
 
-A simple batch image converter.
+A simple batch image converter.<br><br>
+
 
 ![Screenshot](screenshot.png)
 
+<br>
 It ask the user for the input and output folders.<br>
 Also ask for the output resolution and the output format (jpg or png).<br>
 In case the user select jpg as the output format the program will ask for the level of compression of the jpg.<br> 
