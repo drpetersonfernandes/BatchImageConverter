@@ -116,7 +116,7 @@ namespace BatchImageConverter
 
                     await Task.Run(() => ProcessFiles(allFiles, destinationFolder, format, compression, width, height, progress));
                 }
-
+                
 
             }
 
