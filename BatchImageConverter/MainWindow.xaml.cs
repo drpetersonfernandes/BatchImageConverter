@@ -74,9 +74,25 @@ namespace BatchImageConverter
                     Directory.CreateDirectory(destinationFolder);
                 }
 
-                if (!double.TryParse(WidthBox.Text, out double width) || !double.TryParse(HeightBox.Text, out double height))
+                //if (!double.TryParse(WidthBox.Text, out double width) || !double.TryParse(HeightBox.Text, out double height))
+                //{
+                //    System.Windows.MessageBox.Show("Invalid width or height");
+                //    return;
+                //}
+
+                if (!double.TryParse(WidthBox.Text, out double width))
                 {
-                    System.Windows.MessageBox.Show("Invalid width or height");
+                    width = 0;
+                }
+
+                if (!double.TryParse(HeightBox.Text, out double height))
+                {
+                    height = 0;
+                }
+
+                if (width <= 0 && height <= 0)
+                {
+                    System.Windows.MessageBox.Show("At least one of the dimensions (width or height) should be valid.");
                     return;
                 }
 
@@ -119,9 +135,8 @@ namespace BatchImageConverter
             }
         }
 
-        private void ProcessFiles(string[] allFiles, string destinationFolder, string format, int compression, double width, double height, IProgress<double> progress)
+        private void ProcessFiles(string[] allFiles, string destinationFolder, string format, int compression, double targetWidth, double targetHeight, IProgress<double> progress)
         {
-
             int totalFiles = allFiles.Length;
             double filesProcessed = 0;  // Initialize the counter for files processed
 
@@ -133,11 +148,24 @@ namespace BatchImageConverter
                     fileInfo.Extension.ToLower() == ".bmp" || fileInfo.Extension.ToLower() == ".gif" ||
                     fileInfo.Extension.ToLower() == ".tiff" || fileInfo.Extension.ToLower() == ".tif")
                 {
-                    // Your image conversion logic here
+                    // Load the image
                     BitmapImage image = new BitmapImage();
                     image.BeginInit();
                     image.UriSource = new Uri(file);
                     image.EndInit();
+
+                    // Determine dimensions for the current image:
+                    double currentWidth = targetWidth;
+                    double currentHeight = targetHeight;
+
+                    if (currentWidth <= 0)
+                    {
+                        currentWidth = image.PixelWidth * (targetHeight / image.PixelHeight);
+                    }
+                    else if (currentHeight <= 0)
+                    {
+                        currentHeight = image.PixelHeight * (targetWidth / image.PixelWidth);
+                    }
 
                     BitmapEncoder encoder;
 
@@ -155,7 +183,7 @@ namespace BatchImageConverter
 
                     TransformedBitmap resizedImage = new TransformedBitmap(
                         image,
-                        new System.Windows.Media.ScaleTransform(width / image.PixelWidth, height / image.PixelHeight)
+                        new System.Windows.Media.ScaleTransform(currentWidth / image.PixelWidth, currentHeight / image.PixelHeight)
                     );
                     encoder.Frames.Clear();
                     encoder.Frames.Add(BitmapFrame.Create(resizedImage));
@@ -167,7 +195,7 @@ namespace BatchImageConverter
 
                     using (var stream = new FileStream(destinationFile, FileMode.Create))
                     {
-                       encoder.Save(stream);
+                        encoder.Save(stream);
                     }
 
                     // Increment the processed files counter
@@ -178,6 +206,7 @@ namespace BatchImageConverter
                 }
             }
         }
+
 
     }
 }
