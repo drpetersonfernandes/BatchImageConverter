@@ -1,0 +1,71 @@
+﻿private static void ProcessFiles(string[] allFiles, string destinationFolder, string format, int compression, double targetWidth, double targetHeight, IProgress<double> progress)
+        {
+            _ = allFiles.Length;
+            double filesProcessed = 0;  // Initialize the counter for files processed
+
+            foreach (string file in allFiles)
+            {
+                FileInfo fileInfo = new(file);
+
+                if (fileInfo.Extension.Equals(".jpg", StringComparison.CurrentCultureIgnoreCase) || fileInfo.Extension.Equals(".png", StringComparison.CurrentCultureIgnoreCase) ||
+                    fileInfo.Extension.Equals(".bmp", StringComparison.CurrentCultureIgnoreCase) || fileInfo.Extension.Equals(".gif", StringComparison.CurrentCultureIgnoreCase) ||
+                    fileInfo.Extension.Equals(".tiff", StringComparison.CurrentCultureIgnoreCase) || fileInfo.Extension.Equals(".tif", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    // Load the image
+                    BitmapImage image = new();
+                    image.BeginInit();
+                    image.UriSource = new Uri(file);
+                    image.EndInit();
+
+                    // Determine dimensions for the current image:
+                    double currentWidth = targetWidth;
+                    double currentHeight = targetHeight;
+
+                    if (currentWidth <= 0)
+                    {
+                        currentWidth = image.PixelWidth * (targetHeight / image.PixelHeight);
+                    }
+                    else if (currentHeight <= 0)
+                    {
+                        currentHeight = image.PixelHeight * (targetWidth / image.PixelWidth);
+                    }
+
+                    BitmapEncoder encoder;
+
+                    if (format == "JPG")
+                    {
+                        encoder = new JpegBitmapEncoder();
+                        ((JpegBitmapEncoder)encoder).QualityLevel = compression;
+                    }
+                    else
+                    {
+                        encoder = new PngBitmapEncoder();
+                    }
+
+                    encoder.Frames.Add(BitmapFrame.Create(image));
+
+                    TransformedBitmap resizedImage = new(
+                        image,
+                        new System.Windows.Media.ScaleTransform(currentWidth / image.PixelWidth, currentHeight / image.PixelHeight)
+                    );
+                    encoder.Frames.Clear();
+                    encoder.Frames.Add(BitmapFrame.Create(resizedImage));
+
+                    string destinationFile = Path.Combine(
+                        destinationFolder,
+                        $"{Path.GetFileNameWithoutExtension(fileInfo.Name)}.{format.ToLower()}"
+                    );
+
+                    using (var stream = new FileStream(destinationFile, FileMode.Create))
+                    {
+                        encoder.Save(stream);
+                    }
+
+                    // Increment the processed files counter
+                    filesProcessed++;
+
+                    // Report the progress
+                    progress.Report(filesProcessed);
+                }
+            }
+        }

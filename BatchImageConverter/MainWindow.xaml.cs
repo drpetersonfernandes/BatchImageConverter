@@ -4,12 +4,16 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Threading.Tasks;
-using System.Threading;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using System.Linq;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace BatchImageConverter
 {
     public partial class MainWindow : Window
     {
+        private string selectedAlgorithm = "Bicubic interpolation"; //Default algorithm
 
         public MainWindow()
         {
@@ -20,31 +24,43 @@ namespace BatchImageConverter
 
         private void Exit_Click(object sender, RoutedEventArgs e)
         {
-            this.Close(); // Closes the application
+            this.Close();
         }
 
         private void About_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.MessageBox.Show("Batch Image Converter\nPeterson's Software\n08/2023");
+            System.Windows.MessageBox.Show("Batch Image Converter\nPeterson's Software\nVersion 1.1\n11/2023", "About");
         }
 
         private void ChooseSourceFolder(object sender, RoutedEventArgs e)
         {
+#pragma warning disable CA1416 // Validate platform compatibility
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
+#pragma warning restore CA1416 // Validate platform compatibility
+#pragma warning disable CA1416 // Validate platform compatibility
             System.Windows.Forms.DialogResult result = dialog.ShowDialog();
+#pragma warning restore CA1416 // Validate platform compatibility
             if (result == System.Windows.Forms.DialogResult.OK)
             {
+#pragma warning disable CA1416 // Validate platform compatibility
                 SourceFolder.Text = dialog.SelectedPath;
+#pragma warning restore CA1416 // Validate platform compatibility
             }
         }
 
         private void ChooseDestinationFolder(object sender, RoutedEventArgs e)
         {
+#pragma warning disable CA1416 // Validate platform compatibility
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
+#pragma warning restore CA1416 // Validate platform compatibility
+#pragma warning disable CA1416 // Validate platform compatibility
             System.Windows.Forms.DialogResult result = dialog.ShowDialog();
+#pragma warning restore CA1416 // Validate platform compatibility
             if (result == System.Windows.Forms.DialogResult.OK)
             {
+#pragma warning disable CA1416 // Validate platform compatibility
                 DestinationFolder.Text = dialog.SelectedPath;
+#pragma warning restore CA1416 // Validate platform compatibility
             }
         }
 
@@ -62,10 +78,8 @@ namespace BatchImageConverter
 
         private async void ExecuteConversion(object sender, RoutedEventArgs e)
         {
-
             try
             {
-                
                 string sourceFolder = SourceFolder.Text;
                 string destinationFolder = DestinationFolder.Text;
 
@@ -73,12 +87,6 @@ namespace BatchImageConverter
                 {
                     Directory.CreateDirectory(destinationFolder);
                 }
-
-                //if (!double.TryParse(WidthBox.Text, out double width) || !double.TryParse(HeightBox.Text, out double height))
-                //{
-                //    System.Windows.MessageBox.Show("Invalid width or height");
-                //    return;
-                //}
 
                 if (!double.TryParse(WidthBox.Text, out double width))
                 {
@@ -106,17 +114,14 @@ namespace BatchImageConverter
 
                     ConversionProgressBar.Maximum = totalFiles;
 
-                    Progress<double> progress = new Progress<double>(percent =>
+                    Progress<double> progress = new(percent =>
                     {
                         ConversionProgressBar.Value = percent;
                         int percentage = (int)Math.Round((percent / totalFiles) * 100);
                         ProgressText.Text = $"{percentage}%";
                     });
-
-
-                    await Task.Run(() => ProcessFiles(allFiles, destinationFolder, format, compression, width, height, progress));
+                    await Task.Run(() => ProcessFiles(allFiles, destinationFolder, format, compression, width, height, progress, selectedAlgorithm));
                 }
-                
 
             }
 
@@ -135,76 +140,145 @@ namespace BatchImageConverter
             }
         }
 
-        private void ProcessFiles(string[] allFiles, string destinationFolder, string format, int compression, double targetWidth, double targetHeight, IProgress<double> progress)
+        private void AlgorithmSelectionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            int totalFiles = allFiles.Length;
-            double filesProcessed = 0;  // Initialize the counter for files processed
+            if (sender is ComboBox comboBox && comboBox.SelectedItem is ComboBoxItem selectedItem)
+            {
+                selectedAlgorithm = selectedItem.Content.ToString();
+            }
+        }
+
+
+        private static void ProcessFiles(string[] allFiles, string destinationFolder, string format, int compression, double targetWidth, double targetHeight, IProgress<double> progress, string selectedAlgorithm)
+        {
+            double filesProcessed = 0;
 
             foreach (string file in allFiles)
             {
-                FileInfo fileInfo = new FileInfo(file);
-
-                if (fileInfo.Extension.ToLower() == ".jpg" || fileInfo.Extension.ToLower() == ".png" ||
-                    fileInfo.Extension.ToLower() == ".bmp" || fileInfo.Extension.ToLower() == ".gif" ||
-                    fileInfo.Extension.ToLower() == ".tiff" || fileInfo.Extension.ToLower() == ".tif")
+                FileInfo fileInfo = new(file);
+                if (IsSupportedImageFile(fileInfo.Extension))
                 {
-                    // Load the image
-                    BitmapImage image = new BitmapImage();
-                    image.BeginInit();
-                    image.UriSource = new Uri(file);
-                    image.EndInit();
+                    BitmapImage image = LoadImage(file);
 
-                    // Determine dimensions for the current image:
-                    double currentWidth = targetWidth;
-                    double currentHeight = targetHeight;
+                    // Determine target dimensions
+                    (double currentWidth, double currentHeight) = CalculateDimensions(image.PixelWidth, image.PixelHeight, targetWidth, targetHeight);
 
-                    if (currentWidth <= 0)
-                    {
-                        currentWidth = image.PixelWidth * (targetHeight / image.PixelHeight);
-                    }
-                    else if (currentHeight <= 0)
-                    {
-                        currentHeight = image.PixelHeight * (targetWidth / image.PixelWidth);
-                    }
+                    BitmapSource processedImage = ProcessImageBasedOnAlgorithm(image, currentWidth, currentHeight, selectedAlgorithm);
 
-                    BitmapEncoder encoder;
+                    SaveProcessedImage(processedImage, destinationFolder, fileInfo, format, compression);
 
-                    if (format == "JPG")
-                    {
-                        encoder = new JpegBitmapEncoder();
-                        ((JpegBitmapEncoder)encoder).QualityLevel = compression;
-                    }
-                    else
-                    {
-                        encoder = new PngBitmapEncoder();
-                    }
-
-                    encoder.Frames.Add(BitmapFrame.Create(image));
-
-                    TransformedBitmap resizedImage = new TransformedBitmap(
-                        image,
-                        new System.Windows.Media.ScaleTransform(currentWidth / image.PixelWidth, currentHeight / image.PixelHeight)
-                    );
-                    encoder.Frames.Clear();
-                    encoder.Frames.Add(BitmapFrame.Create(resizedImage));
-
-                    string destinationFile = Path.Combine(
-                        destinationFolder,
-                        $"{Path.GetFileNameWithoutExtension(fileInfo.Name)}.{format.ToLower()}"
-                    );
-
-                    using (var stream = new FileStream(destinationFile, FileMode.Create))
-                    {
-                        encoder.Save(stream);
-                    }
-
-                    // Increment the processed files counter
                     filesProcessed++;
-
-                    // Report the progress
                     progress.Report(filesProcessed);
                 }
             }
+        }
+
+        private static bool IsSupportedImageFile(string extension)
+        {
+            string[] supportedExtensions = [".jpg", ".png", ".bmp", ".gif", ".tiff", ".tif"];
+            return supportedExtensions.Any(ext => ext.Equals(extension, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        private static BitmapImage LoadImage(string filePath)
+        {
+            BitmapImage image = new();
+            image.BeginInit();
+            image.UriSource = new Uri(filePath);
+            image.EndInit();
+            return image;
+        }
+
+        private static BitmapImage ConvertToBitmapSource(Image image)
+        {
+            using var memoryStream = new MemoryStream();
+            image.SaveAsBmp(memoryStream);
+            memoryStream.Seek(0, SeekOrigin.Begin);
+
+            BitmapImage bitmapImage = new();
+            bitmapImage.BeginInit();
+            bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+            bitmapImage.StreamSource = memoryStream;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze(); // Important for use in WPF
+
+            return bitmapImage;
+        }
+
+
+        private static Image ConvertBitmapImageToImageSharpImage(BitmapImage bitmapImage)
+        {
+            using MemoryStream memoryStream = new();
+#pragma warning disable CA1859 // Use concrete types when possible for improved performance
+            BitmapEncoder encoder = new PngBitmapEncoder();
+#pragma warning restore CA1859 // Use concrete types when possible for improved performance
+            encoder.Frames.Add(BitmapFrame.Create(bitmapImage));
+            encoder.Save(memoryStream);
+            memoryStream.Position = 0;
+            return Image.Load(memoryStream);
+        }
+
+
+        private static (double width, double height) CalculateDimensions(double originalWidth, double originalHeight, double targetWidth, double targetHeight)
+        {
+            double currentWidth = targetWidth > 0 ? targetWidth : originalWidth * (targetHeight / originalHeight);
+            double currentHeight = targetHeight > 0 ? targetHeight : originalHeight * (targetWidth / originalWidth);
+            return (currentWidth, currentHeight);
+        }
+
+        private static BitmapImage ProcessImageBasedOnAlgorithm(BitmapImage bitmapImage, double width, double height, string algorithm)
+        {
+            using Image imageSharp = ConvertBitmapImageToImageSharpImage(bitmapImage);
+
+            switch (algorithm)
+            {
+                case "Bicubic interpolation":
+                    using (var resizedImage = ResizeWithBicubic(imageSharp, (int)width, (int)height))
+                    {
+                        return ConvertToBitmapSource(resizedImage);
+                    }
+                case "Lanczos resampling":
+                    using (var resizedImage = ResizeWithLanczos(imageSharp, (int)width, (int)height))
+                    {
+                        return ConvertToBitmapSource(resizedImage);
+                    }
+                case "Spline":
+                    using (var resizedImage = ResizeWithSpline(imageSharp, (int)width, (int)height))
+                    {
+                        return ConvertToBitmapSource(resizedImage);
+                    }
+                default:
+                    throw new ArgumentException("Unknown algorithm selected.");
+            }
+        }
+
+        private static void SaveProcessedImage(BitmapSource image, string destinationFolder, FileInfo fileInfo, string format, int compression)
+        {
+            BitmapEncoder encoder = format == "JPG" ? new JpegBitmapEncoder { QualityLevel = compression } : new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(image));
+
+            string destinationFile = Path.Combine(destinationFolder, $"{Path.GetFileNameWithoutExtension(fileInfo.Name)}.{format.ToLower()}");
+
+            using var stream = new FileStream(destinationFile, FileMode.Create);
+            encoder.Save(stream);
+        }
+
+        private static Image ResizeWithBicubic(Image image, int width, int height)
+        {
+            return image.Clone(ctx => ctx.Resize(width, height, KnownResamplers.Bicubic));
+        }
+
+        private static Image ResizeWithLanczos(Image image, int width, int height)
+        {
+            // Lanczos resampling is best suited for downscaling, but it can also be used for upscaling.
+            // The third parameter in the Resize method is the size of the Lanczos kernel. 
+            // A value of 3 or 5 is common, with 3 being faster and 5 potentially giving higher quality.
+            return image.Clone(ctx => ctx.Resize(width, height, KnownResamplers.Lanczos5));
+        }
+
+        private static Image ResizeWithSpline(Image image, int width, int height)
+        {
+            // Use Spline interpolation for resizing.
+            return image.Clone(ctx => ctx.Resize(width, height, KnownResamplers.Spline));
         }
 
 
