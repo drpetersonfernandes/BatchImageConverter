@@ -1,12 +1,12 @@
-﻿using System;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using System;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
-using System.Threading.Tasks;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
-using System.Linq;
 using Image = SixLabors.ImageSharp.Image;
 
 namespace BatchImageConverter
@@ -29,7 +29,7 @@ namespace BatchImageConverter
 
         private void About_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.MessageBox.Show("Batch Image Converter\nPeterson's Software\nVersion 1.1\n11/2023", "About");
+            System.Windows.MessageBox.Show("Batch Image Converter\nPeterson's Software\nVersion 1.2\n12/2023", "About");
         }
 
         private void ChooseSourceFolder(object sender, RoutedEventArgs e)

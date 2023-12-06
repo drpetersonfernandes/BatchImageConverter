@@ -13,8 +13,14 @@
   <PropertyGroup>
     <NoWin32Manifest>true</NoWin32Manifest>
     <StartupObject>BatchImageConverter.App</StartupObject>
-    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <PackageIcon>icon2.png</PackageIcon>
+    <AssemblyVersion>1.2</AssemblyVersion>
+    <FileVersion>1.2</FileVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="icon.ico" />
+  </ItemGroup>
   <ItemGroup>
     <Resource Include="icon.ico" />
   </ItemGroup>
@@ -61,5 +67,11 @@
     <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
     <PackageReference Include="System.Threading.AccessControl" Version="8.0.0" />
     <PackageReference Include="System.ServiceModel.Federation" Version="6.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="icon2.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 </Project>
