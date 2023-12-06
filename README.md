@@ -7,14 +7,21 @@ A simple batch image converter.<br><br>
 ![Screenshot](screenshot.png)
 
 <br>
-This program batch convert image files from jpg, png, bmp, gif or tiff to png or jpg.<br>
-It ask the user for the input and the output folder.<br>
-Also ask for the output resolution. If you provide only one value, the program will keep the aspect ratio of the original image.<br>
-Also ask for the output format (jpg or png). In case the user select jpg as the output format the program will ask for the level of compression of the jpg.<br>
-You can also select the resize algorithm. The options are: Bicubic, Lanczos and Spline.<br>
-When the user press the "Convert" button, it will convert all the images inside the input folder and save into the output folder. The output file will have the same filename. If the output file already exist, it will be overwritten.<br>
+This program converts batches of image files from JPG, PNG, BMP, GIF, or TIFF to PNG or JPG formats.
+<br>
+It prompts the user for the input and output folders.
+<br>
+The program also requests the desired output resolution. If only one value is provided, it maintains the aspect ratio of the original image.
+<br>
+Additionally, it asks for the output format (JPG or PNG). If JPG is selected as the output format, the program will inquire about the level of JPG compression.
+<br>
+Users can also choose the resize algorithm, with options including Bicubic, Lanczos, and Spline. 
+<br>
+When the user presses the "Convert" button, the program converts all images in the input folder and saves them to the output folder, retaining the original filenames. If the output file already exists, it will be overwritten.
+<br><br>
 
 Made for windows. Tested on windows 11.
+<br><br>
 
 *Written in C#<br>
 Microsoft Visual Studio Community 2022 - Version 17.9.0 Preview 1.1<br>
